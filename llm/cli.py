@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import sys
 
-# Fast path for --help: defer expensive imports
-_SHOWING_HELP = "--help" in sys.argv or "-h" in sys.argv
+# Fast path for quick operations: defer expensive imports
+_QUICK_COMMAND = any(arg in sys.argv for arg in ["--help", "-h", "--version"])
 
 import click
 from click_default_group import DefaultGroup
@@ -15,8 +15,8 @@ import pathlib
 import re
 from typing import cast, Dict, Optional, Iterable, List, Union, Tuple, Type, Any
 
-# Lazy imports - only import when not showing help
-if not _SHOWING_HELP:
+# Lazy imports - only import when not running quick commands
+if not _QUICK_COMMAND:
     import asyncio
     from dataclasses import asdict
     from importlib.metadata import version
@@ -93,7 +93,7 @@ if not _SHOWING_HELP:
 
     warnings.simplefilter("ignore", ResourceWarning)
 else:
-    # Minimal imports for help display
+    # Minimal imports for quick commands (--help, --version, etc.)
     import warnings
     warnings.simplefilter("ignore", ResourceWarning)
 

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import sys
 
-# Fast path for --help: defer expensive imports
-_SHOWING_HELP = "--help" in sys.argv or "-h" in sys.argv
+# Fast path for quick operations: defer expensive imports
+_QUICK_COMMAND = any(arg in sys.argv for arg in ["--help", "-h", "--version"])
 
 from .hookspecs import hookimpl
 from .errors import (
@@ -19,7 +19,7 @@ import os
 import pathlib
 import struct
 
-if not _SHOWING_HELP:
+if not _QUICK_COMMAND:
     from .models import (
         AsyncConversation,
         AsyncKeyModel,
