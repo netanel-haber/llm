@@ -1,86 +1,101 @@
-import asyncio
+from __future__ import annotations
+
+import sys
+
+# Fast path for --help: defer expensive imports
+_SHOWING_HELP = "--help" in sys.argv or "-h" in sys.argv
+
 import click
 from click_default_group import DefaultGroup
-from dataclasses import asdict
-from importlib.metadata import version
-import io
+
+# Always needed imports
 import json
 import os
-from llm import (
-    Attachment,
-    AsyncConversation,
-    AsyncKeyModel,
-    AsyncResponse,
-    CancelToolCall,
-    Collection,
-    Conversation,
-    Fragment,
-    Response,
-    Template,
-    Tool,
-    Toolbox,
-    UnknownModelError,
-    KeyModel,
-    encode,
-    get_async_model,
-    get_default_model,
-    get_default_embedding_model,
-    get_embedding_models_with_aliases,
-    get_embedding_model_aliases,
-    get_embedding_model,
-    get_plugins,
-    get_tools,
-    get_fragment_loaders,
-    get_template_loaders,
-    get_model,
-    get_model_aliases,
-    get_models_with_aliases,
-    user_dir,
-    set_alias,
-    set_default_model,
-    set_default_embedding_model,
-    remove_alias,
-)
-from llm.models import _BaseConversation, ChainResponse
-
-from .migrations import migrate
-from .plugins import pm, load_plugins
-from .utils import (
-    ensure_fragment,
-    extract_fenced_code_block,
-    find_unused_key,
-    has_plugin_prefix,
-    instantiate_from_spec,
-    make_schema_id,
-    maybe_fenced_code,
-    mimetype_from_path,
-    mimetype_from_string,
-    multi_schema,
-    output_rows_as_json,
-    resolve_schema_input,
-    schema_dsl,
-    schema_summary,
-    token_usage_string,
-    truncate_string,
-)
-import base64
-import httpx
-import inspect
 import pathlib
-import pydantic
 import re
-import readline
-from runpy import run_module
-import shutil
-import sqlite_utils
-from sqlite_utils.utils import rows_from_file, Format
-import sys
-import textwrap
 from typing import cast, Dict, Optional, Iterable, List, Union, Tuple, Type, Any
-import warnings
-import yaml
 
-warnings.simplefilter("ignore", ResourceWarning)
+# Lazy imports - only import when not showing help
+if not _SHOWING_HELP:
+    import asyncio
+    from dataclasses import asdict
+    from importlib.metadata import version
+    import io
+    from llm import (
+        Attachment,
+        AsyncConversation,
+        AsyncKeyModel,
+        AsyncResponse,
+        CancelToolCall,
+        Collection,
+        Conversation,
+        Fragment,
+        Response,
+        Template,
+        Tool,
+        Toolbox,
+        UnknownModelError,
+        KeyModel,
+        encode,
+        get_async_model,
+        get_default_model,
+        get_default_embedding_model,
+        get_embedding_models_with_aliases,
+        get_embedding_model_aliases,
+        get_embedding_model,
+        get_plugins,
+        get_tools,
+        get_fragment_loaders,
+        get_template_loaders,
+        get_model,
+        get_model_aliases,
+        get_models_with_aliases,
+        user_dir,
+        set_alias,
+        set_default_model,
+        set_default_embedding_model,
+        remove_alias,
+    )
+    from llm.models import _BaseConversation, ChainResponse
+
+    from .migrations import migrate
+    from .plugins import pm, load_plugins
+    from .utils import (
+        ensure_fragment,
+        extract_fenced_code_block,
+        find_unused_key,
+        has_plugin_prefix,
+        instantiate_from_spec,
+        make_schema_id,
+        maybe_fenced_code,
+        mimetype_from_path,
+        mimetype_from_string,
+        multi_schema,
+        output_rows_as_json,
+        resolve_schema_input,
+        schema_dsl,
+        schema_summary,
+        token_usage_string,
+        truncate_string,
+    )
+    import base64
+    import httpx
+    import inspect
+    import pydantic
+    import readline
+    from runpy import run_module
+    import shutil
+    import sqlite_utils
+    from sqlite_utils.utils import rows_from_file, Format
+    import textwrap
+    import warnings
+    import yaml
+
+    warnings.simplefilter("ignore", ResourceWarning)
+else:
+    # Minimal imports for help display
+    import warnings
+    warnings.simplefilter("ignore", ResourceWarning)
 
 DEFAULT_TEMPLATE = "prompt: "
 
@@ -308,6 +323,17 @@ def schema_option(fn):
     return fn
 
 
+_plugins_loaded = False
+
+def _ensure_plugins_loaded():
+    """Lazily load plugins only when needed."""
+    global _plugins_loaded
+    if not _plugins_loaded:
+        _plugins_loaded = True
+        from .plugins import pm, load_plugins
+        load_plugins()
+        pm.hook.register_commands(cli=cli)
+
 @click.group(
     cls=DefaultGroup,
     default="prompt",
@@ -315,7 +341,8 @@ def schema_option(fn):
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.version_option()
-def cli():
+@click.pass_context
+def cli(ctx):
     """
     Access Large Language Models from the command-line
 
@@ -340,6 +367,9 @@ def cli():
 
         llm prompt --help
     """
+    # Only load plugins if we're not just showing help
+    if ctx.invoked_subcommand is not None or (ctx.obj is None and not ctx.resilient_parsing):
+        _ensure_plugins_loaded()
 
 
 @cli.command(name="prompt")
@@ -3767,11 +3797,6 @@ def render_errors(errors):
         output.append(", ".join(error["loc"]))
         output.append("  " + error["msg"])
     return "\n".join(output)
-
-
-load_plugins()
-
-pm.hook.register_commands(cli=cli)
 
 
 def _human_readable_size(size_bytes):

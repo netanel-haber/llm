@@ -1,41 +1,52 @@
+from __future__ import annotations
+
+import sys
+
+# Fast path for --help: defer expensive imports
+_SHOWING_HELP = "--help" in sys.argv or "-h" in sys.argv
+
 from .hookspecs import hookimpl
 from .errors import (
     ModelError,
     NeedsKeyException,
 )
-from .models import (
-    AsyncConversation,
-    AsyncKeyModel,
-    AsyncModel,
-    AsyncResponse,
-    Attachment,
-    CancelToolCall,
-    Conversation,
-    EmbeddingModel,
-    EmbeddingModelWithAliases,
-    KeyModel,
-    Model,
-    ModelWithAliases,
-    Options,
-    Prompt,
-    Response,
-    Tool,
-    Toolbox,
-    ToolCall,
-    ToolOutput,
-    ToolResult,
-)
-from .utils import schema_dsl, Fragment
-from .embeddings import Collection
-from .templates import Template
-from .plugins import pm, load_plugins
-import click
+
+# Always import these - they're cheap
 from typing import Any, Dict, List, Optional, Callable, Type, Union
 import inspect
 import json
 import os
 import pathlib
 import struct
+
+if not _SHOWING_HELP:
+    from .models import (
+        AsyncConversation,
+        AsyncKeyModel,
+        AsyncModel,
+        AsyncResponse,
+        Attachment,
+        CancelToolCall,
+        Conversation,
+        EmbeddingModel,
+        EmbeddingModelWithAliases,
+        KeyModel,
+        Model,
+        ModelWithAliases,
+        Options,
+        Prompt,
+        Response,
+        Tool,
+        Toolbox,
+        ToolCall,
+        ToolOutput,
+        ToolResult,
+    )
+    from .utils import schema_dsl, Fragment
+    from .embeddings import Collection
+    from .templates import Template
+    from .plugins import pm, load_plugins
+    import click
 
 __all__ = [
     "AsyncConversation",
